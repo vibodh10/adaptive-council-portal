@@ -1,12 +1,14 @@
 {
   "name": "adaptive-council-portal",
   "version": "0.1.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test --test-isolation=none --experimental-strip-types --import ./scripts/test-register-hooks.mjs test/housingRepair.test.mjs test/webmcp.test.mjs"
   },
   "dependencies": {
     "next": "16.3.3",

@@ -1,7 +1,17 @@
-| Capability                        | What it does                                                    | Consequential?                                 |
-| --------------------------------- | --------------------------------------------------------------- | ---------------------------------------------- |
-| `get_experience_preferences`      | Reads how the site is currently adapted                         | No                                             |
-| `adapt_experience`                | Changes text size, clutter, language, journey mode, target size | No — reversible                                |
-| `get_housing_repair_requirements` | Tells the agent what information a repair report needs          | No                                             |
-| `update_housing_repair_draft`     | Fills/updates the same housing-repair draft the human sees      | No submission yet                              |
-| `submit_housing_repair_report`    | Actually creates the repair report/reference                    | **Yes — requires explicit human confirmation** |
+# WebMCP capability plan
+
+The implemented WebMCP surface prepares and adapts the visible Housing Repair
+journey. It deliberately does not expose final submission.
+
+| Capability | What it does | State impact |
+| --- | --- | --- |
+| `get_experience_preferences` | Reads the preferences used by the visible site | Read-only |
+| `adapt_experience` | Applies a partial update to the visible adaptive experience | Reversible visible-state change |
+| `get_housing_repair_requirements` | Describes the real report model and validation requirements | Read-only |
+| `get_housing_repair_draft` | Reads the same live draft shown in the form | Read-only; may return untrusted free text |
+| `update_housing_repair_draft` | Partially updates the same live draft without submitting | Draft-only visible-state change |
+| `open_housing_repair_review` | Validates the draft and opens the existing visible review | Visible-state change; no submission |
+
+Final submission remains a human-only action through the visible
+**Confirm and submit** button. No registered WebMCP tool calls
+`submitHousingRepairReport()` or generates a repair reference.

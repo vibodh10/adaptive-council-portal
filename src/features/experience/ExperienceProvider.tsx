@@ -3,13 +3,14 @@
 import React, {
     createContext,
     useContext,
+    useEffect,
     useState,
     type ReactNode,
 } from "react";
 
 import type { ExperiencePreferences } from "@/types/experience";
 
-const defaultPreferences: ExperiencePreferences = {
+export const defaultExperiencePreferences: ExperiencePreferences = {
     textSize: "normal",
     informationDensity: "full",
     languageMode: "standard",
@@ -29,15 +30,23 @@ const ExperienceContext =
     createContext<ExperienceContextValue | null>(null);
 
 export function ExperienceProvider({ children }: { children: ReactNode }) {
-    const [preferences, setPreferences] = useState<ExperiencePreferences>(defaultPreferences);
+    const [preferences, setPreferences] = useState<ExperiencePreferences>(
+        defaultExperiencePreferences,
+    );
+
+    useEffect(() => {
+        document.documentElement.dataset.motion = preferences.motion;
+
+        return () => {
+            delete document.documentElement.dataset.motion;
+        };
+    }, [preferences.motion]);
 
     return (
-        <ExperienceContext.Provider
-            value={{preferences, setPreferences}}
-        >
+        <ExperienceContext.Provider value={{ preferences, setPreferences }}>
             {children}
         </ExperienceContext.Provider>
-    )
+    );
 }
 
 export function useExperience() {
