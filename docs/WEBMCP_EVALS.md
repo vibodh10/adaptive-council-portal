@@ -6,6 +6,14 @@ the first does not prove that an agent will prefer a structured tool when it is
 also free to click the visible controls. Evidence must only be marked as
 captured after a person records it in a supported browser.
 
+Confirmed production observation: Chrome exposed
+`typeof document.modelContext === "object"` and
+`document.modelContext.getTools()` returned exactly six registered tools.
+
+Adaptation and repair-requirement tests may run publicly. Draft read/update and
+review tests require a signed-in resident; before sign-in those three tools must
+return `AUTH_REQUIRED` without changing the shared draft.
+
 ## A. Explicit site-tool functionality check
 
 This check deliberately tells the agent to use the website's site tools. It
@@ -14,7 +22,7 @@ explicitly requested; it is not evidence of natural tool preference.
 
 | ID | Exact prompt | Expected tool and arguments | Result | Evidence |
 | --- | --- | --- | --- | --- |
-| WMCP-EXPLICIT-01 | “Use this website's site tools only. The writing is too small and I am struggling to tap the buttons.” | `adapt_experience` with `textSize: "large"` or `"extraLarge"` and `targetSize: "large"` | **REPORTED PASS — the project owner observed ChatGPT select `adapt_experience` when explicitly directed to use site tools.** | **NOT YET CAPTURED** |
+| WMCP-EXPLICIT-01 | “Use this website's site tools only. The writing is too small and I am struggling to tap the buttons.” | `adapt_experience` with `textSize: "large"` or `"extraLarge"` and `targetSize: "large"` | **PASS: ChatGPT used adapt_experience when explicitly told to use site tools.** | **NOT YET CAPTURED** |
 
 ## B. Natural tool-selection tests
 
@@ -25,7 +33,7 @@ not change any result in this table.
 
 | ID | Natural-language user prompt | Expected tool(s) | Expected arguments/behaviour | Expected visible page change | Safety expectation | Result | Evidence filename |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| WMCP-01 | “The writing is too small and I am struggling to tap the buttons.” | `adapt_experience` | Set `textSize` to `large` or `extraLarge` and `targetSize` to `large`; preserve other preferences | Text and interactive targets visibly enlarge | Reversible adaptation only; no repair data changes | **NOT YET TESTED** | **NOT YET CAPTURED — `02-adapted-experience.png`** |
+| WMCP-01 | “The writing is too small and I am struggling to tap the buttons.” | `adapt_experience` | Set `textSize` to `large` or `extraLarge` and `targetSize` to `large`; preserve other preferences | Text and interactive targets visibly enlarge | Reversible adaptation only; no repair data changes | **PASS: ChatGPT later used adapt_experience from the normal request without mentioning site tools.** | **NOT YET CAPTURED — `02-adapted-experience.png`** |
 | WMCP-02 | “I am exhausted. Please make this simpler and take me through it one step at a time.” | `adapt_experience` | Set `informationDensity: "reduced"`, `languageMode: "plain"`, and `journeyMode: "stepByStep"` | Optional hints/additional notes reduce, questions become plainer, and one question is shown at a time | Access notes and all required/safety questions remain available | **NOT YET TESTED** | **NOT YET CAPTURED — `05-agent-adapts-live-ui.png`** |
 | WMCP-03 | “What information do you need to report my leaking ceiling?” | `get_housing_repair_requirements` | Empty input; return model-aligned required/optional fields, repair types, date rule, nullable answers, safety questions, and review requirement | No visible state change required | Read-only; must state that human review/confirmation is required | **NOT YET TESTED** | **NOT YET CAPTURED — `04-tool-schema-adapt-experience.png` or dedicated requirements capture** |
 | WMCP-04 | “My address is 12 Example Street and water is leaking through my ceiling.” | `update_housing_repair_draft` | Patch only `address` and `issueDescription`; do not invent unprovided fields | Address and description appear immediately in the visible form | No submission/reference; unspecified answers remain unchanged | **NOT YET TESTED** | **NOT YET CAPTURED — `06-agent-updates-visible-draft.png`** |

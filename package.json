@@ -1,5 +1,5 @@
 {
-  "name": "adaptive-council-portal",
+  "name": "necivia",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -8,18 +8,29 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test --test-isolation=none --experimental-strip-types --import ./scripts/test-register-hooks.mjs test/housingRepair.test.mjs test/webmcp.test.mjs"
+    "test": "node --test --test-isolation=none --experimental-strip-types --import ./scripts/test-register-hooks.mjs test/*.test.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:deploy": "drizzle-kit migrate",
+    "db:seed": "node --experimental-strip-types --import ./scripts/test-register-hooks.mjs scripts/seed-demo.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1121.0",
+    "better-auth": "^1.7.2",
+    "drizzle-orm": "^0.45.2",
     "next": "16.3.3",
+    "postgres": "^3.4.9",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
     "tailwindcss": "^4",

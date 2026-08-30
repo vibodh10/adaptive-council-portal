@@ -30,6 +30,7 @@ type HousingRepairContextValue = {
     isReviewing: boolean;
     openReview: (reportToReview: HousingRepairReport) => void;
     closeReview: () => void;
+    resetReport: () => void;
 };
 
 const HousingRepairContext =
@@ -50,6 +51,11 @@ export function HousingRepairProvider({ children }: { children: ReactNode }) {
         setIsReviewing(false);
     }, []);
 
+    const resetReport = useCallback(() => {
+        setReport(createEmptyHousingRepairReport());
+        setIsReviewing(false);
+    }, []);
+
     return (
         <HousingRepairContext.Provider
             value={{
@@ -58,6 +64,7 @@ export function HousingRepairProvider({ children }: { children: ReactNode }) {
                 isReviewing,
                 openReview,
                 closeReview,
+                resetReport,
             }}
         >
             {children}

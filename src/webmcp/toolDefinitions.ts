@@ -141,6 +141,7 @@ export type WebMcpToolDependencies = {
         journeyMode: ExperiencePreferences["journeyMode"];
     };
     openReview: (report: HousingRepairReport) => void;
+    canAccessHousingRepair: () => boolean;
 };
 
 const housingRepairRequirements = {
@@ -184,6 +185,17 @@ function invalidInputResult(message: string) {
         error: {
             code: "INVALID_INPUT",
             message,
+        },
+    } as const;
+}
+
+function authRequiredResult() {
+    return {
+        ok: false,
+        error: {
+            code: "AUTH_REQUIRED",
+            message:
+                "Sign in with a resident account to access the housing repair draft.",
         },
     } as const;
 }
@@ -260,10 +272,15 @@ export function createWebMcpTools(
                 readOnlyHint: true,
                 untrustedContentHint: true,
             },
-            execute: () => ({
-                ...analyseHousingRepairDraft(dependencies.getReport()),
-                journey: dependencies.getJourneyState(),
-            }),
+            execute: () =>
+                dependencies.canAccessHousingRepair()
+                    ? {
+                          ...analyseHousingRepairDraft(
+                              dependencies.getReport(),
+                          ),
+                          journey: dependencies.getJourneyState(),
+                      }
+                    : authRequiredResult(),
         },
         {
             name: "update_housing_repair_draft",
@@ -276,6 +293,10 @@ export function createWebMcpTools(
                 untrustedContentHint: true,
             },
             execute: (input) => {
+                if (!dependencies.canAccessHousingRepair()) {
+                    return authRequiredResult();
+                }
+
                 const current = dependencies.getReport();
                 const validated = validateHousingRepairDraftPatch(
                     input,
@@ -313,6 +334,10 @@ export function createWebMcpTools(
                 untrustedContentHint: false,
             },
             execute: () => {
+                if (!dependencies.canAccessHousingRepair()) {
+                    return authRequiredResult();
+                }
+
                 const report = dependencies.getReport();
                 const validationIssues =
                     getHousingRepairValidationIssues(report);

@@ -24,8 +24,6 @@ export type HousingRepairValidationIssue = {
 
 export type HousingRepairSubmissionResult = {
     success: true;
-    reference: string;
-    submittedAt: string;
 };
 
 export function isRepairType(value: unknown): value is RepairType {
@@ -202,14 +200,7 @@ export function submitHousingRepairReport(
 ): HousingRepairSubmissionResult {
     validateHousingRepairReport(report);
 
-    const reference = `REP-${Math.random()
-        .toString(36)
-        .slice(2, 8)
-        .toUpperCase()}`;
-
     return {
         success: true,
-        reference,
-        submittedAt: new Date().toISOString(),
     };
 }

@@ -1,199 +1,182 @@
-# Adaptive Council Portal
+# Necivia
 
-Adaptive Council Portal is a competition project for the OpenAI WebMCP
-Challenge. It explores how a local-council service can remain a familiar,
-accessible website for people while also exposing precise, safe browser tools
-to an assisting agent.
+Necivia is a secure council-service platform that lets people and assisting
+agents work through the same visible, accessible service journey. The live
+demonstration is hosted at [necivia.up.railway.app](https://necivia.up.railway.app).
 
-The repository name is a working name, not a final product brand. The visible
-demonstration uses the fictional Westbridge Council identity.
+Westbridge Council is a **fictional demonstration tenant**. Use synthetic test
+information only. Production councils connect an authorised case-management
+endpoint through Necivia’s delivery adapter.
 
-## Problem
+## The problem
 
-Council forms can be difficult to navigate when someone is tired, stressed,
-has accessibility needs, or needs help describing an urgent repair. Generic
-browser automation can also misread a complex form or use a different path
-from the validation protecting human submissions.
+Council forms can be hard to use when someone is tired, stressed, has an
+accessibility need, or needs help describing a repair. Generic browser
+automation can also take a different route from the validation and safety
+boundaries protecting human submissions.
 
-This project demonstrates a shared human-and-agent journey in which:
+Necivia keeps one shared journey:
 
-- the person can use the website normally without WebMCP;
-- an agent can adapt the same visible interface to the person's needs;
-- an agent can read requirements and prepare the same live repair draft;
-- the existing domain validation protects both human and agent paths; and
-- the final consequential action remains an explicit human confirmation.
+```text
+resident describes a need
+→ an agent may adapt the visible page and prepare the shared draft
+→ the resident reviews the actual visible report
+→ the resident clicks Confirm and submit
+→ the server authenticates, authorises, limits and revalidates
+→ PostgreSQL stores the case and audit event
+→ the configured council delivery adapter runs
+→ the server returns the persisted reference
+```
+
+There is deliberately no WebMCP submission tool. An agent cannot create a
+persistent case, generate a reference, or replace the resident’s final click.
 
 ## Flagship journey
 
-Housing Repair is the primary journey. It supports:
+Housing Repair supports:
 
 - normal and step-by-step presentation;
-- standard and plain-language questions;
-- full and reduced-clutter information density;
-- normal, large, and extra-large text;
-- normal and large controls;
-- reduced motion;
-- required safety questions and an immediate-danger warning;
-- a review-before-submit stage; and
-- a generated reference only after the person presses **Confirm and submit**.
+- plain-language, reduced-clutter, large-text, large-control and reduced-motion
+  preferences;
+- one shared human/WebMCP draft;
+- required safety questions and immediate-danger guidance;
+- authenticated review and server-side submission;
+- idempotent PostgreSQL case creation and server-only references;
+- up to five private JPEG, PNG or WebP photographs;
+- resident case history;
+- a tenant-scoped staff repair inbox and workflow statuses; and
+- truthful sandbox or authorised-webhook delivery state.
 
-Missed Bin remains in the repository as a secondary working example of the
-same shared business-logic approach.
+The older missed-bin source remains only as a secondary code example and is not
+linked from the production service or presented as a real submission path.
 
-## Why WebMCP matters here
+## WebMCP
 
-WebMCP lets an agent use explicit tools instead of guessing from screenshots or
-simulated clicks. In this project, the tools are connected to the same React
-state and domain rules as the visible page. An address or issue description
-entered by either participant is immediately part of the one shared draft.
+The six existing tool names are preserved:
 
-The WebMCP layer uses the current imperative browser API:
+| Tool | Purpose | Authentication |
+| --- | --- | --- |
+| `get_experience_preferences` | Read visible Page Support settings | Public |
+| `adapt_experience` | Adapt the current visible page | Public |
+| `get_housing_repair_requirements` | Explain repair fields and rules | Public |
+| `get_housing_repair_draft` | Read the resident’s shared draft | Resident |
+| `update_housing_repair_draft` | Update supplied shared-draft fields | Resident |
+| `open_housing_repair_review` | Validate and visibly open review | Resident |
 
-```ts
-await document.modelContext.registerTool(tool, { signal });
-```
+Free-text draft output remains marked as untrusted. Unauthenticated repair
+draft/update/review calls return a structured `AUTH_REQUIRED` result. There is
+no WebMCP login, password or submit capability.
 
-The site feature-detects this API. No polyfill or WebMCP runtime is required for
-ordinary browser use.
+## Production architecture
 
-## Architecture
+- **Next.js App Router / React / TypeScript / Tailwind CSS** provide the civic
+  resident and staff interface.
+- **Better Auth** provides database-backed email/password sessions. Public
+  sign-up is disabled; demo accounts are provisioned by an idempotent seed.
+- **Drizzle ORM / PostgreSQL** store tenants, users, sessions, cases,
+  attachments, delivery attempts, audits and rate-limit buckets.
+- **AWS S3 SDK** talks to the private Railway S3-compatible bucket. Objects are
+  retrieved only through the authorised backend.
+- **CouncilDeliveryAdapter** selects the Westbridge sandbox by default or a
+  statically configured HTTPS/HMAC webhook.
+- **Zod plus shared domain validation** reject unknown fields and revalidate
+  the complete repair on the server.
 
-```text
-ExperienceProvider ───────────────┐
-                                  ├─ WebMcpRegistration
-HousingRepairProvider ────────────┤
-        │                         │
-        └─ one HousingRepairReport┘
-                  │
-        HousingRepairForm
-                  │
-     validateHousingRepairReport()
-                  │
-      human review + confirmation
-                  │
-      submitHousingRepairReport()
-```
+See [Production architecture](docs/PRODUCTION_ARCHITECTURE.md) and
+[Security model](docs/SECURITY_MODEL.md).
 
-- `ExperienceProvider` owns the live adaptive preferences.
-- `HousingRepairProvider` owns the live draft and review state.
-- `HousingRepairForm` and the WebMCP tools consume those same providers.
-- `submitHousingRepairReport()` remains the final protected submission path.
-- WebMCP can prepare and open review, but it cannot submit or create a reference.
+## Authentication and authorisation
 
-## WebMCP tools
+- Server sessions use HttpOnly, SameSite=Lax cookies, Secure cookies in
+  production and finite eight-hour expiry.
+- Tenant and role come from the authenticated database session, never client
+  input.
+- Residents can only query cases and attachments matching their tenant and user
+  ID.
+- Staff can only query cases and attachments matching their tenant.
+- Only staff can change workflow status or retry failed delivery.
+- Every protected route and mutation rechecks its server session.
 
-| Tool | Purpose | Read-only | Untrusted output |
-| --- | --- | --- | --- |
-| `get_experience_preferences` | Read the effective visible preferences | Yes | No |
-| `adapt_experience` | Apply a strict partial preference update | No | No |
-| `get_housing_repair_requirements` | Read model, field, date, safety, and review requirements | Yes | No |
-| `get_housing_repair_draft` | Read the shared draft and readiness analysis | Yes | Yes—may contain human free text |
-| `update_housing_repair_draft` | Patch supplied fields in the shared draft | No | Yes—echoes draft free text |
-| `open_housing_repair_review` | Validate and visibly open review | No | No |
+## Persistence, attachments and delivery
 
-There is intentionally no submission tool.
+The final visible confirmation sends multipart data to `POST /api/repairs`.
+The server validates the idempotency UUID, strict repair schema, file count,
+file sizes, MIME declarations and image magic bytes before acknowledging a
+case. References and all identity/tenant fields are generated or derived on the
+server.
 
-## Human and agent flow
-
-```text
-person describes the need
-→ agent optionally adapts the visible experience
-→ agent reads the real requirements
-→ agent updates the shared visible draft
-→ agent opens the real review page
-→ person reviews the safety answers and all details
-→ person presses Confirm and submit
-→ shared business validation runs again
-→ repair reference is generated
-```
-
-## Safety and privacy
-
-- Required fields and safety answers are validated in shared domain code.
-- Invalid or future problem-start dates are rejected.
-- Free-form draft output is marked with `untrustedContentHint: true`.
-- Free text is stored and returned as data; it cannot alter tool definitions.
-- Immediate danger produces a visible warning and does not invent emergency
-  contact or automation.
-- Tool registration is owned by one `AbortController`; aborting the lifecycle
-  signal removes registrations.
-- A global active-controller guard prevents duplicate registrations during
-  Strict Mode, remounts, and Fast Refresh.
-- No authentication, database, external API, OpenAI API, or secret is required.
+Westbridge sandbox delivery means the persisted case appears in the
+authenticated Westbridge staff inbox; it is not an external or real-council
+integration. Optional webhook delivery requires a deploy-time HTTPS endpoint
+and secret, rejects local/private/reserved targets, signs the normalized body
+with HMAC-SHA256, times out, follows no redirects and records only safe response
+metadata.
 
 ## Local setup
 
-Requirements:
-
-- Node.js 20.9 or newer for Next.js;
-- Node.js 24 for the dependency-free `npm test` harness; and
-- npm.
+Requirements: Node.js 20.9+, npm and PostgreSQL.
 
 ```bash
 npm install
+copy .env.example .env.local
+npm run db:deploy
+npm run db:seed
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). Replace every placeholder
+in `.env.local`; never use the example credentials in production.
+
+## Environment variables
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | PostgreSQL connection |
+| `AUTH_SECRET` | Yes | At least 32 random characters for Better Auth |
+| `BETTER_AUTH_URL` | Yes | Exact public application origin |
+| `DEMO_MODE` | Demo | Shows the demo notice and permits demo seeding |
+| `DEMO_RESIDENT_EMAIL` | Seed | Resident demo email |
+| `DEMO_RESIDENT_PASSWORD` | Seed | Resident demo password |
+| `DEMO_STAFF_EMAIL` | Seed | Staff demo email |
+| `DEMO_STAFF_PASSWORD` | Seed | Staff demo password |
+| `S3_BUCKET` | Uploads | Private bucket name |
+| `S3_ACCESS_KEY_ID` | Uploads | Server-only bucket key ID |
+| `S3_SECRET_ACCESS_KEY` | Uploads | Server-only bucket secret |
+| `S3_REGION` | Uploads | Bucket region |
+| `S3_ENDPOINT` | Uploads | S3-compatible endpoint |
+| `COUNCIL_DELIVERY_MODE` | No | `sandbox` (default) or `webhook` |
+| `COUNCIL_WEBHOOK_URL` | Webhook | Authorised static HTTPS endpoint |
+| `COUNCIL_WEBHOOK_SECRET` | Webhook | HMAC secret, at least 32 characters |
+
+Railway bucket variables should be connected using Railway Variable
+References—not copied into source. See [Deployment](docs/DEPLOYMENT.md).
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start the local Next.js development server |
-| `npm run lint` | Run ESLint and Next.js accessibility rules |
-| `npm test` | Run the Node domain and WebMCP test suites once |
-| `npm run build` | Create and type-check the production build |
-| `npm start` | Serve a completed production build |
+| `npm run dev` | Start local development |
+| `npm run db:generate` | Generate reviewed SQL migrations from the schema |
+| `npm run db:migrate` | Apply checked-in migrations locally |
+| `npm run db:deploy` | Apply checked-in migrations in deployment |
+| `npm run db:seed` | Idempotently seed the fictional Westbridge tenant/users |
+| `npm run lint` | Run ESLint |
+| `npm test` | Run domain, auth, database, security and WebMCP tests |
+| `npm run build` | Create/type-check the production build without connecting to a DB |
+| `npm start` | Serve the production build |
 
-## Chrome WebMCP testing
+## Privacy and challenge evidence
 
-WebMCP is an evolving browser draft. For Chrome 149 or a current supported
-Chrome build:
+The demo is for synthetic data. Production deployments should be operated
+under the relevant council/controller arrangements. Necivia is designed to
+hand cases to an authorised council system; this repository does not claim a
+regulatory certification or compliance status.
 
-1. Open `chrome://flags/#enable-webmcp-testing`.
-2. Enable **WebMCP for testing**.
-3. For Chrome's experimental DevTools WebMCP panel, also enable
-   `chrome://flags/#devtools-webmcp-support` if it is present.
-4. Relaunch Chrome.
-5. Open this application and inspect the six registered tools with Chrome's
-   WebMCP tooling or the Model Context Tool Inspector.
-
-See [docs/TESTING.md](docs/TESTING.md) for exact manual invocations and safety
-checks.
-
-## Evaluation and evidence
-
-- [Manual testing guide](docs/TESTING.md)
+- [Testing guide](docs/TESTING.md)
 - [WebMCP evaluation plan](docs/WEBMCP_EVALS.md)
-- [Evidence checklist](docs/EVIDENCE_CHECKLIST.md)
 - [Build evidence](docs/BUILD_EVIDENCE.md)
-- [Codex prompt evidence](docs/CODEX_PROMPTS.md)
-
-The evaluation and screenshot result fields remain marked **NOT YET TESTED**
-or **NOT YET CAPTURED** until a person runs them in a supported browser.
-
-## Known limitations
-
-- WebMCP is still a draft and requires supported browser tooling or flags.
-- Native Chrome/ChatGPT WebMCP scenarios require manual testing; automated
-  tests cover the definitions, schemas, state adapters, validation, and
-  registration lifecycle.
-- The application has no persistence or backend; references exist only in the
-  current browser session.
-- The test harness uses Node 24's built-in TypeScript stripping because adding
-  an external test framework was not available in the implementation environment.
-- Deployment is deliberately outside this repository task.
-
-## Challenge work statement
-
-The WebMCP integration, shared-state refactor, automated tests, and competition
-evidence foundation were developed for the OpenAI WebMCP Challenge. Codex
-assisted implementation; the repository records actual automated results and
-leaves browser evidence unclaimed until manually captured.
+- [Evidence checklist](docs/EVIDENCE_CHECKLIST.md)
 
 ## License
 
-This project is available under the [MIT License](LICENSE). After pushing to
-GitHub, manually confirm that GitHub recognises the license and displays it in
-the repository About panel.
+Licensed under the [MIT License](LICENSE).

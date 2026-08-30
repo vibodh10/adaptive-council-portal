@@ -40,14 +40,14 @@ function validReport(overrides = {}) {
     };
 }
 
-test("a valid housing repair passes validation and submission", () => {
+test("a valid housing repair passes shared domain validation", () => {
     const report = validReport();
 
     assert.doesNotThrow(() => validateHousingRepairReport(report));
 
     const result = submitHousingRepairReport(report);
     assert.equal(result.success, true);
-    assert.match(result.reference, /^REP-[A-Z0-9]{6}$/);
+    assert.equal("reference" in result, false);
 });
 
 test("a blank address fails", () => {

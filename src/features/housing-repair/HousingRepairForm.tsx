@@ -1,22 +1,11 @@
 "use client";
 
-import React, { useState, type ReactNode } from "react";
+import React, { useRef, useState, type ReactNode } from "react";
 
 import { useExperience } from "@/features/experience/ExperienceProvider";
 import { useHousingRepair } from "@/features/housing-repair/HousingRepairProvider";
-import { submitHousingRepairReport } from "@/lib/submitHousingRepairReport";
+import { repairTypeLabels } from "@/lib/housingRepairPresentation";
 import type { RepairType } from "@/types/housingRepair";
-
-const repairTypeLabels: Record<RepairType, string> = {
-    plumbing: "Plumbing",
-    heating: "Heating",
-    electrical: "Electrical",
-    roof_or_ceiling: "Roof or ceiling",
-    windows_or_doors: "Windows or doors",
-    damp_or_mould: "Damp or mould",
-    structural: "Structural",
-    other: "Other",
-};
 
 type HousingRepairStep =
     | "address"
@@ -26,7 +15,14 @@ type HousingRepairStep =
     | "isGettingWorse"
     | "immediateDanger"
     | "accessNotes"
-    | "additionalNotes";
+    | "additionalNotes"
+    | "photos";
+
+type SubmissionSuccess = {
+    reference: string;
+    caseId: string;
+    deliveryStatus: "PENDING" | "SUCCEEDED" | "FAILED";
+};
 
 function SummaryRow({
     label,
@@ -161,7 +157,10 @@ export default function HousingRepairForm() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [stepError, setStepError] = useState<string | null>(null);
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const [reference, setReference] = useState<string | null>(null);
+    const [submission, setSubmission] = useState<SubmissionSuccess | null>(null);
+    const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const idempotencyKeyRef = useRef<string | null>(null);
 
     const requiredSteps: HousingRepairStep[] = [
         "address",
@@ -174,9 +173,10 @@ export default function HousingRepairForm() {
     const optionalSteps: HousingRepairStep[] = [
         "accessNotes",
         "additionalNotes",
+        "photos",
     ];
     const steps = isReducedClutter
-        ? [...requiredSteps, "accessNotes" as const]
+        ? [...requiredSteps, "accessNotes" as const, "photos" as const]
         : [...requiredSteps, ...optionalSteps];
     const activeStepIndex = Math.min(currentStepIndex, steps.length - 1);
     const activeStep = steps[activeStepIndex];
@@ -265,12 +265,51 @@ export default function HousingRepairForm() {
         setCurrentStepIndex(activeStepIndex + 1);
     }
 
-    function handleConfirm() {
+    async function handleConfirm() {
         setSubmitError(null);
+        setIsSubmitting(true);
 
         try {
-            const result = submitHousingRepairReport(report);
-            setReference(result.reference);
+            idempotencyKeyRef.current ??= crypto.randomUUID();
+            const formData = new FormData();
+            formData.set("report", JSON.stringify(report));
+            formData.set("idempotencyKey", idempotencyKeyRef.current);
+
+            for (const photo of selectedPhotos) {
+                formData.append("photos", photo);
+            }
+
+            const response = await fetch("/api/repairs", {
+                method: "POST",
+                body: formData,
+                credentials: "same-origin",
+            });
+            const result = (await response.json()) as {
+                ok: boolean;
+                reference?: string;
+                caseId?: string;
+                deliveryStatus?: SubmissionSuccess["deliveryStatus"];
+                error?: { code?: string; message?: string };
+            };
+
+            if (
+                !response.ok ||
+                !result.ok ||
+                !result.reference ||
+                !result.caseId ||
+                !result.deliveryStatus
+            ) {
+                throw new Error(
+                    result.error?.message ??
+                        "The repair could not be submitted. Your answers are still here.",
+                );
+            }
+
+            setSubmission({
+                reference: result.reference,
+                caseId: result.caseId,
+                deliveryStatus: result.deliveryStatus,
+            });
         } catch (error) {
             if (error instanceof Error) {
                 setSubmitError(error.message);
@@ -279,6 +318,8 @@ export default function HousingRepairForm() {
                     "Something went wrong while submitting the repair report.",
                 );
             }
+        } finally {
+            setIsSubmitting(false);
         }
     }
 
@@ -298,7 +339,7 @@ export default function HousingRepairForm() {
         </div>
     );
 
-    if (reference) {
+    if (submission) {
         return (
             <div
                 role="status"
@@ -328,9 +369,25 @@ export default function HousingRepairForm() {
                         Repair reference
                     </p>
                     <p className="mt-2 break-all font-mono text-3xl font-black tracking-wide text-civic-ink sm:text-4xl">
-                        {reference}
+                        {submission.reference}
                     </p>
                 </div>
+                {submission.deliveryStatus === "FAILED" && (
+                    <div className="mt-6 border-l-8 border-civic-attention bg-civic-attention-soft px-5 py-4">
+                        <p className="font-black">Delivery needs staff attention</p>
+                        <p className="mt-1 text-civic-ink-soft">
+                            Your case is safely recorded. Council staff can see
+                            it in the Westbridge repair inbox and review the
+                            failed delivery attempt.
+                        </p>
+                    </div>
+                )}
+                <a
+                    href={`/repairs/${submission.caseId}`}
+                    className="civic-button civic-button-secondary mt-7 min-h-12 px-5 py-3"
+                >
+                    View this repair
+                </a>
             </div>
         );
     }
@@ -448,6 +505,24 @@ export default function HousingRepairForm() {
                     </section>
                 )}
 
+                {selectedPhotos.length > 0 && (
+                    <section aria-labelledby="review-photos-title" className="mt-9">
+                        <h2
+                            id="review-photos-title"
+                            className="civic-display border-b-2 border-civic-ink pb-3 text-2xl sm:text-3xl"
+                        >
+                            Photographs
+                        </h2>
+                        <ul className="mt-4 list-disc space-y-2 pl-6">
+                            {selectedPhotos.map((photo) => (
+                                <li key={`${photo.name}-${photo.size}`}>
+                                    {photo.name} ({Math.ceil(photo.size / 1024)} KB)
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
+
                 {submitError && (
                     <p
                         role="alert"
@@ -487,9 +562,12 @@ export default function HousingRepairForm() {
                         <button
                             type="button"
                             onClick={handleConfirm}
+                            disabled={isSubmitting}
                             className={primaryButtonClassName}
                         >
-                            Confirm and submit
+                            {isSubmitting
+                                ? "Submitting securely…"
+                                : "Confirm and submit"}
                         </button>
                     </div>
                 </section>
@@ -870,6 +948,60 @@ export default function HousingRepairForm() {
                         }
                         className={`${fieldClassName} max-w-2xl`}
                     />
+                </div>
+            )}
+
+            {showQuestion("photos") && (
+                <div className={questionClassName}>
+                    <label htmlFor="repair-photos" className={labelClassName}>
+                        {isPlainLanguage
+                            ? "Do you want to add photos of the problem?"
+                            : "Repair photographs"}{" "}
+                        <span className="font-normal text-civic-ink-soft">
+                            (optional)
+                        </span>
+                    </label>
+                    {!isReducedClutter && (
+                        <p
+                            id="repair-photos-hint"
+                            className="mt-2 max-w-2xl text-sm leading-6 text-civic-ink-soft"
+                        >
+                            Add up to 5 JPEG, PNG or WebP images. Each image can
+                            be up to 5 MB. Do not include documents or SVG files.
+                        </p>
+                    )}
+                    <input
+                        id="repair-photos"
+                        name="repair-photos"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        aria-describedby={
+                            isReducedClutter ? undefined : "repair-photos-hint"
+                        }
+                        onChange={(event) => {
+                            const files = Array.from(event.target.files ?? []);
+
+                            if (files.length > 5) {
+                                setStepError(
+                                    "Attach no more than 5 photographs.",
+                                );
+                                event.target.value = "";
+                                setSelectedPhotos([]);
+                                return;
+                            }
+
+                            setStepError(null);
+                            setSelectedPhotos(files);
+                        }}
+                        className={`${fieldClassName} max-w-2xl file:mr-4 file:border-0 file:bg-civic-accent-soft file:px-4 file:py-2 file:font-bold file:text-civic-accent-dark`}
+                    />
+                    {selectedPhotos.length > 0 && (
+                        <p className="mt-3 font-bold text-civic-ink-soft">
+                            {selectedPhotos.length} photograph
+                            {selectedPhotos.length === 1 ? "" : "s"} selected
+                        </p>
+                    )}
                 </div>
             )}
         </>

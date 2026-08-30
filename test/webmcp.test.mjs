@@ -27,7 +27,7 @@ function tomorrow() {
     return formatLocalDate(date);
 }
 
-function createHarness() {
+function createHarness({ authenticated = true } = {}) {
     let preferences = {
         textSize: "normal",
         informationDensity: "full",
@@ -66,6 +66,7 @@ function createHarness() {
         openReview: () => {
             isReviewing = true;
         },
+        canAccessHousingRepair: () => authenticated,
     });
 
     return {
@@ -277,6 +278,35 @@ test("partial housing updates preserve unspecified draft fields", async () => {
         "Water is leaking through my ceiling.",
     );
     assert.equal(harness.getReport().repairType, null);
+});
+
+test("unauthenticated repair tools return AUTH_REQUIRED without mutating state", async () => {
+    const harness = createHarness({ authenticated: false });
+    const before = harness.getReport();
+
+    for (const [name, input] of [
+        ["get_housing_repair_draft", {}],
+        ["update_housing_repair_draft", { address: "12 Example Street" }],
+        ["open_housing_repair_review", {}],
+    ]) {
+        const result = await execute(getTool(harness.tools, name), input);
+        assert.equal(result.ok, false);
+        assert.equal(result.error.code, "AUTH_REQUIRED");
+    }
+
+    assert.deepEqual(harness.getReport(), before);
+    assert.equal(harness.getIsReviewing(), false);
+});
+
+test("adaptation remains available without authentication", async () => {
+    const harness = createHarness({ authenticated: false });
+    const result = await execute(
+        getTool(harness.tools, "adapt_experience"),
+        { textSize: "large" },
+    );
+
+    assert.equal(result.ok, true);
+    assert.equal(harness.getPreferences().textSize, "large");
 });
 
 test("invalid repair type and future date patches are rejected without mutation", async () => {

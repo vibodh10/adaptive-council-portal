@@ -1,8 +1,27 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 
+import AccountNavigation from "@/components/AccountNavigation";
 import CivicMark from "@/components/CivicMark";
 
-export default function CouncilPageShell({ children }: { children: ReactNode }) {
+type BreadcrumbItem = {
+    label: string;
+    href?: string;
+};
+
+export default function CouncilPageShell({
+    children,
+    breadcrumbs = [
+        { label: "Home", href: "/" },
+        { label: "Housing" },
+        { label: "Report a housing repair" },
+    ],
+    currentNav = "housing",
+}: {
+    children: ReactNode;
+    breadcrumbs?: BreadcrumbItem[];
+    currentNav?: "home" | "housing";
+}) {
     return (
         <div id="top" className="flex min-h-screen flex-col bg-civic-paper">
             <a
@@ -30,13 +49,16 @@ export default function CouncilPageShell({ children }: { children: ReactNode }) 
                         </span>
                     </a>
 
-                    <div className="hidden border-l border-white/25 pl-6 text-right sm:block">
-                        <p className="text-sm font-bold text-white">
-                            Housing and homes
-                        </p>
-                        <p className="mt-1 text-sm text-civic-mint">
-                            A service shaped around residents
-                        </p>
+                    <div className="flex min-w-fit flex-col items-end gap-3 border-l border-white/25 pl-4 sm:pl-6">
+                        <div className="hidden text-right sm:block">
+                            <p className="text-sm font-bold text-white">
+                                Housing and homes
+                            </p>
+                            <p className="mt-1 text-sm text-civic-mint">
+                                A service shaped around residents
+                            </p>
+                        </div>
+                        <AccountNavigation />
                     </div>
                 </div>
 
@@ -46,25 +68,45 @@ export default function CouncilPageShell({ children }: { children: ReactNode }) 
                 >
                     <ul className="mx-auto flex w-full max-w-7xl flex-wrap px-4 sm:px-6 lg:px-8">
                         <li>
-                            <a
-                                href="#top"
+                            <Link
+                                href="/"
+                                aria-current={
+                                    currentNav === "home" ? "page" : undefined
+                                }
                                 className="block border-b-4 border-transparent px-3 py-4 font-bold hover:border-civic-line hover:bg-civic-paper focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-[-3px] focus-visible:outline-civic-focus sm:px-5"
                             >
                                 Home
-                            </a>
+                            </Link>
                         </li>
                         <li>
-                            <a
-                                href="#main-content"
-                                aria-current="page"
-                                className="block border-b-4 border-civic-accent bg-civic-accent-soft px-3 py-4 font-bold text-civic-accent-dark focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-[-3px] focus-visible:outline-civic-focus sm:px-5"
+                            <Link
+                                href="/"
+                                aria-current={
+                                    currentNav === "housing"
+                                        ? "page"
+                                        : undefined
+                                }
+                                className={`block border-b-4 px-3 py-4 font-bold focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-[-3px] focus-visible:outline-civic-focus sm:px-5 ${
+                                    currentNav === "housing"
+                                        ? "border-civic-accent bg-civic-accent-soft text-civic-accent-dark"
+                                        : "border-transparent hover:border-civic-line hover:bg-civic-paper"
+                                }`}
                             >
                                 Housing repairs
-                            </a>
+                            </Link>
                         </li>
                     </ul>
                 </nav>
             </header>
+
+            {process.env.DEMO_MODE === "true" && (
+                <div className="border-b border-civic-attention bg-civic-attention-soft text-civic-ink">
+                    <p className="mx-auto w-full max-w-7xl px-4 py-3 text-sm font-bold sm:px-6 lg:px-8">
+                        Westbridge Council is a demonstration tenant. Please use
+                        test information only.
+                    </p>
+                </div>
+            )}
 
             <div className="border-b border-civic-line bg-civic-surface-muted">
                 <nav
@@ -72,24 +114,46 @@ export default function CouncilPageShell({ children }: { children: ReactNode }) 
                     className="mx-auto w-full max-w-7xl px-4 py-3 text-sm sm:px-6 lg:px-8"
                 >
                     <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-civic-ink-soft">
-                        <li>
-                            <a
-                                href="#top"
-                                className="font-bold text-civic-accent-dark underline decoration-1 underline-offset-4 hover:decoration-2"
-                            >
-                                Home
-                            </a>
-                        </li>
-                        <li aria-hidden="true" className="text-civic-line">
-                            <span className="mx-1">›</span>
-                        </li>
-                        <li>Housing</li>
-                        <li aria-hidden="true" className="text-civic-line">
-                            <span className="mx-1">›</span>
-                        </li>
-                        <li aria-current="page" className="font-bold text-civic-ink">
-                            Report a housing repair
-                        </li>
+                        {breadcrumbs.map((item, index) => {
+                            const isLast = index === breadcrumbs.length - 1;
+
+                            return (
+                                <li
+                                    key={`${item.label}-${index}`}
+                                    className="flex items-center gap-x-2"
+                                >
+                                    {index > 0 && (
+                                        <span
+                                            aria-hidden="true"
+                                            className="mx-1 text-civic-line"
+                                        >
+                                            ›
+                                        </span>
+                                    )}
+                                    {item.href && !isLast ? (
+                                        <a
+                                            href={item.href}
+                                            className="font-bold text-civic-accent-dark underline decoration-1 underline-offset-4 hover:decoration-2"
+                                        >
+                                            {item.label}
+                                        </a>
+                                    ) : (
+                                        <span
+                                            aria-current={
+                                                isLast ? "page" : undefined
+                                            }
+                                            className={
+                                                isLast
+                                                    ? "font-bold text-civic-ink"
+                                                    : undefined
+                                            }
+                                        >
+                                            {item.label}
+                                        </span>
+                                    )}
+                                </li>
+                            );
+                        })}
                     </ol>
                 </nav>
             </div>
@@ -112,10 +176,15 @@ export default function CouncilPageShell({ children }: { children: ReactNode }) 
                             </p>
                         </div>
                     </div>
-                    <p className="max-w-sm text-sm leading-6 text-white/75 sm:text-right">
-                        A fictional council service demonstrating accessible,
-                        adaptive public services.
-                    </p>
+                    <div className="max-w-sm text-sm leading-6 text-white/75 sm:text-right">
+                        <p>
+                            Westbridge Council is a fictional demonstration
+                            tenant.
+                        </p>
+                        <p className="mt-1 font-bold text-civic-mint">
+                            Powered by Necivia
+                        </p>
+                    </div>
                 </div>
             </footer>
         </div>

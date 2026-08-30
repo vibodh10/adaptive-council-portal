@@ -1,6 +1,6 @@
 import CouncilPageShell from "@/components/CouncilPageShell";
 import ExperienceControls from "@/features/experience/ExperienceControls";
-import HousingRepairForm from "@/features/housing-repair/HousingRepairForm";
+import HousingRepairGate from "@/features/housing-repair/HousingRepairGate";
 
 export default function Home() {
     return (
@@ -16,7 +16,7 @@ export default function Home() {
                     >
                         Make this page easier for me ↓
                     </a>
-                    <HousingRepairForm />
+                    <HousingRepairGate />
                 </section>
 
                 <aside className="lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1">

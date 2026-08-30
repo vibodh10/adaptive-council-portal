@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 
 import { useExperience } from "@/features/experience/ExperienceProvider";
 import { useHousingRepair } from "@/features/housing-repair/HousingRepairProvider";
+import { authClient } from "@/lib/auth-client";
 import type { ExperiencePreferences } from "@/types/experience";
 import type { HousingRepairReport } from "@/types/housingRepair";
 import { getDocumentModelContext } from "@/webmcp/modelContext";
@@ -21,6 +22,7 @@ type WebMcpRegistrationGlobal = typeof globalThis & {
 };
 
 export default function WebMcpRegistration() {
+    const { data: session } = authClient.useSession();
     const { preferences, setPreferences } = useExperience();
     const {
         report,
@@ -28,11 +30,21 @@ export default function WebMcpRegistration() {
         isReviewing,
         openReview,
     } = useHousingRepair();
-    const stateRef = useRef({ preferences, report, isReviewing });
+    const stateRef = useRef({
+        preferences,
+        report,
+        isReviewing,
+        canAccessHousingRepair: session?.user.role === "RESIDENT",
+    });
     const actionsRef = useRef({ setPreferences, setReport, openReview });
 
     useEffect(() => {
-        stateRef.current = { preferences, report, isReviewing };
+        stateRef.current = {
+            preferences,
+            report,
+            isReviewing,
+            canAccessHousingRepair: session?.user.role === "RESIDENT",
+        };
         actionsRef.current = { setPreferences, setReport, openReview };
     }, [
         preferences,
@@ -41,6 +53,7 @@ export default function WebMcpRegistration() {
         setPreferences,
         setReport,
         openReview,
+        session?.user.role,
     ]);
 
     useEffect(() => {
@@ -87,6 +100,8 @@ export default function WebMcpRegistration() {
                 actionsRef.current.openReview(reportToReview);
                 stateRef.current.isReviewing = true;
             },
+            canAccessHousingRepair: () =>
+                stateRef.current.canAccessHousingRepair,
         });
 
         void registerWebMcpTools(

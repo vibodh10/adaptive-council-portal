@@ -7,9 +7,12 @@ import WebMcpRegistration from "@/webmcp/WebMcpRegistration";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "Report a housing repair | Westbridge Council",
+    title: {
+        default: "Westbridge Council housing repairs | Necivia",
+        template: "%s | Necivia",
+    },
     description:
-        "Report a repair needed at a fictional Westbridge Council property.",
+        "Secure housing repair services for the fictional Westbridge Council demonstration tenant, powered by Necivia.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
