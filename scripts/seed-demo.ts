@@ -5,6 +5,11 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/server/db/client";
 import { account, councils, user } from "@/server/db/schema";
+import {
+    createPostgresMigrationConnection,
+    inspectMigrationState,
+    loadLocalMigrations,
+} from "./database-migrations.mjs";
 
 type SeedUser = {
     email: string;
@@ -96,7 +101,23 @@ async function seed() {
         throw new Error("Set DEMO_MODE=true to seed the fictional demo tenant.");
     }
 
-    requiredEnvironment("DATABASE_URL");
+    const databaseUrl = requiredEnvironment("DATABASE_URL");
+    const migrationConnection = createPostgresMigrationConnection(databaseUrl);
+
+    try {
+        const migrationState = await inspectMigrationState(
+            migrationConnection.executor,
+            loadLocalMigrations(),
+        );
+
+        if (!migrationState.ready) {
+            throw new Error(
+                "Database schema is not ready for seeding. Run npm run db:status and apply or repair migrations first.",
+            );
+        }
+    } finally {
+        await migrationConnection.close();
+    }
 
     const [existingCouncil] = await db
         .select({ id: councils.id })

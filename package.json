@@ -10,8 +10,10 @@
     "lint": "eslint",
     "test": "node --test --test-isolation=none --experimental-strip-types --import ./scripts/test-register-hooks.mjs test/*.test.mjs",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:deploy": "drizzle-kit migrate",
+    "db:status": "node scripts/database-status.mjs",
+    "db:bootstrap": "node scripts/database-bootstrap.mjs",
+    "db:migrate": "node scripts/database-deploy.mjs",
+    "db:deploy": "node scripts/database-deploy.mjs",
     "db:seed": "node --experimental-strip-types --import ./scripts/test-register-hooks.mjs scripts/seed-demo.ts"
   },
   "dependencies": {

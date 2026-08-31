@@ -1,34 +1,34 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync, readdirSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { hashPassword } from "better-auth/crypto";
 import { drizzle } from "drizzle-orm/pglite";
 import { PGlite } from "@electric-sql/pglite";
 
+import {
+    deployPendingMigrations,
+    loadLocalMigrations,
+} from "../../scripts/database-migrations.mjs";
 import * as schema from "../../src/server/db/schema.ts";
 
-const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+function pgliteExecutor(client) {
+    return {
+        async query(text, parameters = []) {
+            return (await client.query(text, parameters)).rows;
+        },
+        async transaction(callback) {
+            return client.transaction((transaction) =>
+                callback(pgliteExecutor(transaction)),
+            );
+        },
+    };
+}
 
 export async function createTestDatabase() {
     const client = new PGlite();
-    const migrationDirectory = join(repositoryRoot, "drizzle");
-    const migrationFiles = readdirSync(migrationDirectory)
-        .filter((filename) => filename.endsWith(".sql"))
-        .sort();
-
-    if (migrationFiles.length === 0) {
-        throw new Error("Expected a generated SQL migration for tests.");
-    }
-
-    for (const migrationFile of migrationFiles) {
-        const migration = readFileSync(
-            join(migrationDirectory, migrationFile),
-            "utf8",
-        ).replaceAll("--> statement-breakpoint", "");
-        await client.exec(migration);
-    }
+    await deployPendingMigrations(
+        pgliteExecutor(client),
+        loadLocalMigrations(),
+    );
 
     return {
         client,

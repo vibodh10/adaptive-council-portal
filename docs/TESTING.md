@@ -30,12 +30,19 @@ Coverage includes:
 - durable 429 behavior, origin checks, webhook URL/HMAC safety and sandbox
   delivery, including truthful failed-delivery state and staff retry; and
 - all six WebMCP definitions, schemas, authentication behavior, review boundary
-  and registration lifecycle.
+  and registration lifecycle;
+- checked-in migration journal ordering and SQL hashes;
+- blank and poisoned-ledger first-run deployment through `db:deploy`;
+- initialized and future strict migration, including idempotency;
+- safe empty-database metadata repair, partial/unknown schema refusal and
+  preservation of unexpected application data; and
+- proof that deployment never invokes the separate seed command.
 
 ## Local authenticated journey
 
 1. Configure `.env.local` from `.env.example` with a local PostgreSQL database.
-2. Run `npm run db:deploy` and `npm run db:seed`.
+2. Run `npm run db:deploy`, verify `npm run db:status` reports
+   `Schema ready for seed: YES`, and run `npm run db:seed`.
 3. Run `npm run dev` and open `http://localhost:3000`.
 4. Confirm the fictional-tenant notice is visible when `DEMO_MODE=true`.
 5. Before signing in, confirm Page Support works and the repair form is not

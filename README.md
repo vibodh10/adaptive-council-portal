@@ -120,6 +120,7 @@ Requirements: Node.js 20.9+, npm and PostgreSQL.
 npm install
 copy .env.example .env.local
 npm run db:deploy
+npm run db:status
 npm run db:seed
 npm run dev
 ```
@@ -157,8 +158,10 @@ References—not copied into source. See [Deployment](docs/DEPLOYMENT.md).
 | --- | --- |
 | `npm run dev` | Start local development |
 | `npm run db:generate` | Generate reviewed SQL migrations from the schema |
-| `npm run db:migrate` | Apply checked-in migrations locally |
-| `npm run db:deploy` | Apply checked-in migrations in deployment |
+| `npm run db:status` | Report the redacted target, schema, ledger rows and pending migrations |
+| `npm run db:bootstrap` | Explicit empty-database-only diagnostic/emergency bootstrap |
+| `npm run db:migrate` | Hash-verify and transactionally apply checked-in migrations locally |
+| `npm run db:deploy` | Safely bootstrap a verified-empty first run or strictly migrate an initialized database |
 | `npm run db:seed` | Idempotently seed the fictional Westbridge tenant/users |
 | `npm run lint` | Run ESLint |
 | `npm test` | Run domain, auth, database, security and WebMCP tests |

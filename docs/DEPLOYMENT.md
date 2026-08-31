@@ -56,20 +56,103 @@ S3_ENDPOINT            -> bucket.ENDPOINT
 
 Keep the bucket private. Do not configure a public object URL.
 
-## Migration and seed
+## Migration status and execution
+
+Necivia does not use `drizzle-kit migrate` in deployment. In the installed
+Drizzle ORM 0.45.2 path, PostgreSQL migration application uses the greatest
+`created_at` value in `drizzle.__drizzle_migrations` as a single high-water
+mark. A stale row with a later value can therefore make the CLI skip
+checked-in migrations whose hashes were never applied while still exiting
+successfully.
+
+The permanent `npm run db:deploy` command chooses one of two paths under one
+transaction and PostgreSQL advisory lock:
+
+- **Initialized database:** when `public.councils` exists, validate every
+  ledger row against the ordered checked-in hash and timestamp, refuse a
+  partial schema, apply pending SQL and ledger inserts, and verify the result.
+- **First deployment:** when `public.councils` is absent, enumerate application
+  tables, views, enums and sequences. Only when none exist may it reuse the
+  empty-database bootstrap, repair stale Drizzle metadata, apply all checked-in
+  migrations, and verify the result.
+
+If `public.councils` is absent but any application object exists, or if an
+initialized schema/ledger is partial or inconsistent, deployment aborts without
+deleting or resetting application data. Railway logs identify either
+`first-run bootstrap`, `normal strict migration`, or the precise refusal
+reason.
+
+Inspect a target without changing it:
+
+```bash
+npm run db:status
+```
+
+The command prints the host and database without URL credentials, connected
+database identity, whether `public.councils` and Drizzle metadata exist, every
+local and applied migration hash, pending migrations, and whether seeding is
+safe. It exits non-zero until the complete schema is ready.
+
+### Railway pre-deploy and first deployment
+
+Keep the already-saved Railway pre-deploy command unchanged from the first
+successful deployment onward:
+
+```bash
+npm run db:deploy
+```
+
+The first run safely selects bootstrap only after proving the application
+database is empty. Subsequent runs see the complete Necivia schema and select
+normal strict migration. The explicit `npm run db:bootstrap` command remains
+available for diagnosis or emergency recovery, but Railway does not need it as
+its pre-deploy setting.
+
+After the first deployment, confirm its logs show `Deployment mode: first-run
+bootstrap` and end with `Schema ready for seed: YES`.
+
+Seeding remains a separate operator action. For one later deployment, after
+the migration deployment has succeeded, temporarily use:
+
+```bash
+npm run db:status && npm run db:seed
+```
+
+The status command must return success before the idempotent Westbridge seed
+runs. After that deployment succeeds, restore the permanent pre-deploy command
+to `npm run db:deploy`. `db:deploy` itself never invokes the seed.
+
+Outside Railway, the equivalent post-bootstrap commands are:
+
+```bash
+npm run db:status
+npm run db:seed
+```
+
+The seed remains idempotent and explicitly fails before writing if the schema
+or migration metadata is incomplete.
+
+The private Railway hostname does not need to be reachable through local
+`railway run` or SSH for this flow; migration and seeding execute inside normal
+Railway pre-deploy environments.
+
+## Initial installation and seed
 
 From an environment with `DATABASE_URL` connected to the intended database:
 
 ```bash
 npm ci
 npm run db:deploy
+npm run db:status
 npm run db:seed
 ```
 
-`db:deploy` applies checked-in migrations and records them in Drizzle’s
-migration table. It does not reset data. `db:seed` requires `DEMO_MODE=true`,
-creates or updates the fictional Westbridge tenant and the two environment-
-specified demo users, hashes their passwords, and is safe to run repeatedly.
+For a verified-empty database, `db:deploy` safely bootstraps even when Drizzle
+metadata is poisoned. For an initialized database, it applies only pending
+checked-in migrations and records exact hashes. It does not reset application
+data and never seeds. `db:seed` requires `DEMO_MODE=true`, creates or updates
+the fictional Westbridge tenant and the two environment-specified demo users,
+hashes their passwords, and is safe to run repeatedly.
 
 Do not run `drizzle-kit push`, an interactive migration command or a database
 reset in production.
@@ -100,7 +183,7 @@ authenticated staff.
 
 ## Post-deploy checks
 
-1. Run migrations and seed once.
+1. Run `npm run db:deploy`, status, and then the separate seed once.
 2. Sign in with the private resident demo credentials.
 3. Submit a synthetic repair and confirm the server reference persists after a
    refresh.

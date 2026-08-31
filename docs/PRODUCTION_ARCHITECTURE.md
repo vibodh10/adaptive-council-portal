@@ -45,6 +45,14 @@ References are unique. `(resident_id, idempotency_key)` is unique. Tenant,
 owner, status, delivery, reference, case and attachment indexes cover the main
 resident/staff access paths.
 
+Necivia's single deployment runner selects safe first-run bootstrap when no
+application schema objects exist, or strict migration when `public.councils`
+identifies an initialized database. Both paths share one advisory-locked
+transaction, compare exact ordered migration hashes, and verify the resulting
+schema. It does not rely on Drizzle's single timestamp high-watermark. The
+explicit bootstrap command remains available for diagnosis, but is not needed
+as a separate Railway pre-deploy setting.
+
 The database client is constructed without opening a connection. This permits
 `npm run build` without a live database; runtime protected requests still fail
 closed when configuration or PostgreSQL is unavailable.
