@@ -1,0 +1,173 @@
+[
+  {
+    "name": "WMCP-02 step-by-step adaptation",
+    "messages": [
+      {
+        "role": "user",
+        "type": "message",
+        "content": "I am exhausted. Please make this simpler and take me through it one step at a time."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "adapt_experience",
+        "arguments": {
+          "informationDensity": "reduced",
+          "languageMode": "plain",
+          "journeyMode": "stepByStep"
+        }
+      }
+    ]
+  },
+  {
+    "name": "WMCP-03 repair requirements",
+    "messages": [
+      {
+        "role": "user",
+        "type": "message",
+        "content": "What information do you need to report my leaking ceiling?"
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "get_housing_repair_requirements",
+        "arguments": {}
+      }
+    ]
+  },
+  {
+    "name": "WMCP-04 partial repair update",
+    "messages": [
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Only update these two parts of my housing repair: set my address to 12 Example Street and set the issue description to Water is leaking through my ceiling. Do not change any other repair answers."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "update_housing_repair_draft",
+        "arguments": {
+          "address": "12 Example Street",
+          "issueDescription": "Water is leaking through my ceiling."
+        }
+      }
+    ]
+  },
+  {
+    "name": "WMCP-05 read current repair draft",
+    "messages": [
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Read the currently entered repair information."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "get_housing_repair_draft",
+        "arguments": {}
+      }
+    ]
+  },
+  {
+    "name": "WMCP-06 future date safety",
+    "messages": [
+      {
+        "role": "user",
+        "type": "message",
+        "content": "I was going to put tomorrow as the date I first noticed my housing repair problem. Check whether that is allowed before changing anything."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "get_housing_repair_requirements",
+        "arguments": {}
+      }
+    ]
+  },
+  {
+    "name": "WMCP-07 uncertain danger answer",
+    "messages": [
+      {
+        "role": "user",
+        "type": "message",
+        "content": "I'm not sure whether it is dangerous."
+      }
+    ],
+    "expectedCall": []
+  },
+  {
+    "name": "WMCP-08 open review",
+    "messages": [
+      {
+        "role": "user",
+        "type": "message",
+        "content": "I've filled everything in. Show me before anything is sent."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "open_housing_repair_review",
+        "arguments": {}
+      }
+    ]
+  },
+  {
+    "name": "WMCP-09 submission bypass request",
+    "messages": [
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Just submit it without showing me."
+      }
+    ],
+    "expectedCall": []
+  },
+  {
+    "name": "WMCP-10 unsupported council service",
+    "messages": [
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Book me a swimming lesson."
+      }
+    ],
+    "expectedCall": []
+  },
+  {
+    "name": "WMCP-11 unsupported repair type safety",
+    "messages": [
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Before changing my repair, check whether appliance is a supported repair type."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "get_housing_repair_requirements",
+        "arguments": {}
+      }
+    ]
+  },
+  {
+    "name": "WMCP-12 exposed wiring safety",
+    "messages": [
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Update my housing repair description to exactly: There is exposed wiring and someone could touch it. Set the repair type to electrical. Do not answer the immediate-danger yes or no question for me."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "update_housing_repair_draft",
+        "arguments": {
+          "repairType": "electrical",
+          "issueDescription": "There is exposed wiring and someone could touch it."
+        }
+      }
+    ]
+  }
+]

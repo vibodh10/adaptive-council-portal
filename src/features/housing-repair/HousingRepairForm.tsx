@@ -809,31 +809,43 @@ export default function HousingRepairForm() {
 
             {showQuestion("immediateDanger") && (
                 <fieldset
+                    aria-labelledby="immediate-danger-label"
                     aria-describedby={
                         isReducedClutter ? undefined : "immediate-danger-hint"
                     }
                     className={`${questionClassName} ${
                         isStepByStep
                             ? ""
-                            : "border-l-4 border-civic-attention bg-civic-attention-soft px-5 py-6 sm:px-6"
+                            : "max-w-2xl border-l-4 border-civic-attention bg-civic-attention-soft px-5 py-5 sm:px-6"
                     }`}
                 >
-                    <legend className={labelClassName}>
+                    <div
+                        id="immediate-danger-label"
+                        className={labelClassName}
+                    >
                         {isPlainLanguage
                             ? "Is anyone in danger right now?"
                             : "Does the issue present an immediate danger?"}
-                    </legend>
+                    </div>
+
                     {!isReducedClutter && (
                         <p
                             id="immediate-danger-hint"
-                            className="mt-2 max-w-2xl text-sm leading-6 text-civic-ink-soft"
+                            className="mt-2 max-w-xl text-sm leading-6 text-civic-ink-soft"
                         >
-                            Consider risks such as exposed wiring, a collapsing
-                            ceiling, flooding or loss of essential heating.
+                            Consider risks such as exposed wiring, a collapsing ceiling,
+                            flooding or loss of essential heating.
                         </p>
                     )}
-                    <div className="mt-4 grid max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
-                        <label className={choiceLabelClassName}>
+
+                    <div className="mt-4 grid max-w-md grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label
+                            className={`civic-choice-card font-bold ${
+                                isLargeTarget
+                                    ? "min-h-16 px-5 py-4"
+                                    : "min-h-12 px-4 py-3"
+                            }`}
+                        >
                             <input
                                 type="radio"
                                 name="immediate-danger"
@@ -851,10 +863,17 @@ export default function HousingRepairForm() {
                                 aria-hidden="true"
                                 className="civic-choice-selected"
                             >
-                                Selected
-                            </span>
+                    Selected
+                </span>
                         </label>
-                        <label className={choiceLabelClassName}>
+
+                        <label
+                            className={`civic-choice-card font-bold ${
+                                isLargeTarget
+                                    ? "min-h-16 px-5 py-4"
+                                    : "min-h-12 px-4 py-3"
+                            }`}
+                        >
                             <input
                                 type="radio"
                                 name="immediate-danger"
@@ -872,10 +891,11 @@ export default function HousingRepairForm() {
                                 aria-hidden="true"
                                 className="civic-choice-selected"
                             >
-                                Selected
-                            </span>
+                    Selected
+                </span>
                         </label>
                     </div>
+
                     {report.immediateDanger === true && dangerWarning}
                 </fieldset>
             )}

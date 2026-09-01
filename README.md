@@ -168,6 +168,20 @@ References—not copied into source. See [Deployment](docs/DEPLOYMENT.md).
 | `npm run build` | Create/type-check the production build without connecting to a DB |
 | `npm start` | Serve the production build |
 
+## Verification
+
+Current verification:
+
+- **20 automated tests passed, 0 failed**
+- **Final WebMCP natural-language selection suite: 11/11 passed (100%)**
+- **Production resident → persistent repair → staff workflow verified**
+- **Exactly six WebMCP tools confirmed on the live production deployment**
+- **Lint, production build and `git diff --check` passed**
+
+Evaluation definitions, reports and screenshots are kept in
+[`docs/evidence/`](docs/evidence/) and documented in
+[WebMCP evaluation record](docs/WEBMCP_EVALS.md).
+
 ## Privacy and challenge evidence
 
 The demo is for synthetic data. Production deployments should be operated

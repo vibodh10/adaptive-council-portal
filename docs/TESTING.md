@@ -1,10 +1,21 @@
 # Testing guide
 
+Necivia uses automated domain/security tests, WebMCP tool-selection evaluations,
+manual browser verification and production end-to-end testing.
+
+## Current verification status
+
+- **Automated Node tests:** 20 passed, 0 failed
+- **ESLint:** passed
+- **Production build:** passed
+- **`git diff --check`:** passed
+- **Final WebMCP automated selection suite:** 11/11 passed, 100.0%
+- **Production resident/staff journey:** passed
+- **Production WebMCP registration:** six tools confirmed
+
 ## Automated checks
 
-The automated suite uses Node’s test runner and an embedded PGlite database. It
-applies the checked-in PostgreSQL migrations and does not contact Railway,
-production PostgreSQL, the private bucket or a real webhook.
+Run:
 
 ```bash
 npm run lint
@@ -13,55 +24,79 @@ npm run build
 git diff --check
 ```
 
+The automated test suite uses Node's test runner and an embedded PGlite
+database. It applies the checked-in PostgreSQL migrations and does not contact
+Railway production PostgreSQL, the private production bucket or a real council
+webhook.
+
 Coverage includes:
 
-- shared repair validation, including real/non-future dates and answered safety
+- shared repair validation, including real/non-future dates and required safety
   booleans;
 - Better Auth resident/staff password login, fresh sessions, logout
-  invalidation, generic bad-password failure and disabled sign-up;
+  invalidation, generic bad-password failure and disabled public sign-up;
 - unauthenticated submission and case-read rejection;
-- server-side persistence, unique references and idempotency;
+- server-side persistence, server-generated unique references and idempotency;
 - rejection of client-supplied server fields;
-- resident ownership, staff tenant isolation, status permissions and audits;
+- resident ownership and staff tenant isolation;
+- staff-only workflow status changes and audit events;
 - attachment IDOR prevention;
-- partial attachment failure cleanup without an abandoned case reservation;
-- JPEG/PNG/WebP signature acceptance and SVG/executable/MIME/size/count
-  rejection;
-- durable 429 behavior, origin checks, webhook URL/HMAC safety and sandbox
-  delivery, including truthful failed-delivery state and staff retry; and
-- all six WebMCP definitions, schemas, authentication behavior, review boundary
-  and registration lifecycle;
-- checked-in migration journal ordering and SQL hashes;
-- blank and poisoned-ledger first-run deployment through `db:deploy`;
-- initialized and future strict migration, including idempotency;
-- safe empty-database metadata repair, partial/unknown schema refusal and
-  preservation of unexpected application data; and
-- proof that deployment never invokes the separate seed command.
+- cleanup after partial attachment/upload failures;
+- JPEG, PNG and WebP signature acceptance;
+- SVG, executable, mismatched MIME, oversized and excessive upload rejection;
+- origin checks and durable rate limiting;
+- sandbox delivery and webhook URL/HMAC protections;
+- truthful failed-delivery state and staff retry;
+- all six WebMCP definitions, schemas and authentication boundaries;
+- review without WebMCP submission;
+- WebMCP registration lifecycle cleanup;
+- checked-in migration journal ordering and hashes;
+- safe blank/poisoned-ledger first-run database deployment;
+- strict initialized-database migration and idempotency;
+- refusal to reset partial or unexpected application schemas; and
+- proof that deployment never silently runs the separate seed operation.
 
-## Local authenticated journey
+Current result:
 
-1. Configure `.env.local` from `.env.example` with a local PostgreSQL database.
-2. Run `npm run db:deploy`, verify `npm run db:status` reports
-   `Schema ready for seed: YES`, and run `npm run db:seed`.
-3. Run `npm run dev` and open `http://localhost:3000`.
-4. Confirm the fictional-tenant notice is visible when `DEMO_MODE=true`.
-5. Before signing in, confirm Page Support works and the repair form is not
-   available.
-6. Sign in with the resident seed account supplied through environment
-   variables.
-7. Complete the housing repair, optionally attach safe test images, review the
-   report and click **Confirm and submit**.
-8. Confirm no success/reference appears before server acknowledgement.
-9. Refresh `/repairs`; confirm the case persists.
-10. Sign out, sign in as staff, and confirm the case appears at
-    `/staff/repairs` with delivery and danger state.
-11. Change the workflow status and confirm the activity history updates.
+**20 passed, 0 failed.**
 
-Status: **NOT YET MANUALLY RE-RUN AFTER PRODUCTION HARDENING**.
+## Production authenticated journey
 
-## WebMCP checks
+The production application is:
 
-In a supported Chrome build, verify exactly these tools:
+`https://necivia.up.railway.app`
+
+The following end-to-end journey has been manually verified:
+
+1. Visit Housing Repair while signed out.
+2. Confirm Page Support remains available but resident repair data does not.
+3. Sign in with the fictional demo resident account.
+4. Complete a Housing Repair using synthetic test information.
+5. Review the visible report.
+6. Manually press **Confirm and submit**.
+7. Confirm a server-generated persistent repair reference is returned.
+8. Refresh the resident repair history and confirm the case persists.
+9. Sign out.
+10. Sign in with the fictional demo staff account.
+11. Confirm the same case/reference appears in the tenant-scoped staff inbox.
+12. Open the case and verify its persisted details.
+13. Change workflow status and confirm the change persists.
+14. Sign out and confirm protected resident/staff information is unavailable.
+15. Verify the production page still exposes exactly six WebMCP tools.
+
+Status:
+
+**PASS — production end-to-end verification completed after production
+hardening and database seeding.**
+
+## Production WebMCP checks
+
+Production browser:
+
+**Google Chrome 152.0.7977.65 (Official Build) (64-bit)** with WebMCP testing
+enabled.
+
+The production page exposes exactly:
 
 1. `get_experience_preferences`
 2. `adapt_experience`
@@ -70,38 +105,83 @@ In a supported Chrome build, verify exactly these tools:
 5. `update_housing_repair_draft`
 6. `open_housing_repair_review`
 
-There must be no submission/login/password tool.
+There is no WebMCP:
+
+- submission tool;
+- login/password tool; or
+- case-reference creation tool.
 
 Before resident login:
 
-- adaptation and public requirements must work;
-- repair draft/update/review must return `AUTH_REQUIRED`; and
-- no repair state may change.
+- adaptation remains available;
+- repair requirements remain available;
+- draft read/update/review return structured `AUTH_REQUIRED`; and
+- repair state cannot be changed.
 
-After resident login, repeat the shared-draft and review invocations in
-[WEBMCP_EVALS.md](WEBMCP_EVALS.md). Confirm the visible **Confirm and submit**
-button is still required and the tool response never contains a persistent
-reference.
+After resident login:
 
-Confirmed observations supplied for this project:
+- draft read/update operate on the same visible draft as the resident;
+- shared validation applies to WebMCP updates;
+- review can be opened only through the review capability;
+- review does not create a persistent case/reference; and
+- the visible **Confirm and submit** action remains required.
 
-- explicit “use this website’s site tools only” selected `adapt_experience`;
-- the natural request about small writing and hard-to-tap buttons later selected
-  `adapt_experience` without mentioning site tools; and
-- production Chrome returned six tools from
-  `document.modelContext.getTools()`.
+## ChatGPT Site Tools observations
 
-Do not mark any other manual evaluation as passed without recording it.
+Captured observations include:
+
+- an explicit “use this website's site tools only” request selected
+  `adapt_experience`;
+- the natural request about small writing and hard-to-tap controls selected
+  `adapt_experience` without mentioning Site Tools; and
+- the production Site Tools interface exposed six Necivia tools.
+
+Evidence:
+
+`docs/evidence/webmcp/WMCP-EXPLICIT-01-explicit-site-tools.png`
+
+`docs/evidence/webmcp/WMCP-01-natural-adaptation.png`
+
+## Automated WebMCP selection evaluation
+
+WMCP-02 through WMCP-12 were evaluated against the production URL using
+WebMCP Evals with `openai:gpt-5.2`.
+
+Final command:
+
+```bash
+npx webmcp-evals browser -u https://necivia.up.railway.app -e docs/evidence/webmcp/wmcp-02-to-12-final-evals.json -b vercel -m openai:gpt-5.2 --chrome-channel chrome --reporter console json html --open
+```
+
+Final result:
+
+**11 passed / 11 total — 100.0%, 0 failures, 0 errors.**
+
+This suite evaluates natural-language WebMCP tool selection. Because its
+browser session is fresh and unauthenticated, authenticated draft execution is
+verified separately through the signed-in production journey and functional
+browser evidence.
+
+Final reports:
+
+- `docs/evidence/webmcp/WMCP-02-to-12-automated-selection-report.html`
+- `docs/evidence/webmcp/WMCP-02-to-12-automated-selection-report.json`
+- `docs/evidence/webmcp/WMCP-02-to-12-automated-selection-summary.png`
+
+See [WEBMCP_EVALS.md](WEBMCP_EVALS.md) for individual cases.
 
 ## Security smoke tests
 
-- Directly request another resident’s case/attachment ID; expect not found.
-- Use a staff session from another tenant; expect not found.
-- Send a mutation with a mismatched `Origin`; expect 403.
-- Retry one idempotency key; expect the same case/reference.
-- Rename an executable/SVG to `.jpg`; expect upload rejection.
-- Exceed login, submission and upload limits in a non-production test database;
-  expect structured 429 responses.
-- Configure sandbox mode and verify no external request occurs.
-- Configure a controlled test webhook and verify HMAC, timeout, no redirects and
-  safe failure metadata.
+Automated coverage includes:
+
+- cross-resident case/attachment denial;
+- cross-tenant staff denial;
+- mismatched-origin mutation rejection;
+- idempotency replay;
+- executable/SVG disguised as image rejection;
+- login/submission/upload rate limiting;
+- sandbox delivery isolation;
+- webhook HMAC signing and URL restrictions; and
+- preservation of application data when migration state is unsafe.
+
+Production testing uses synthetic demo information only.
